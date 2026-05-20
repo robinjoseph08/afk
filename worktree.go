@@ -13,7 +13,8 @@ const defaultWorktreeBase = ".afk/worktrees"
 type WorktreeOpts struct {
 	RepoDir string
 	Branch  string
-	BaseDir string // defaults to ~/.afk/worktrees
+	BaseDir string   // defaults to ~/.afk/worktrees
+	Setup   []string // command to run in the worktree after creation (e.g. []string{"make", "setup"})
 }
 
 type Worktree struct {
@@ -60,6 +61,14 @@ func CreateWorktree(opts WorktreeOpts) (*Worktree, error) {
 	cmd := exec.Command("git", "-C", opts.RepoDir, "worktree", "add", worktreeDir, opts.Branch)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("afk: failed to create worktree: %s: %w", string(out), err)
+	}
+
+	if len(opts.Setup) > 0 {
+		setup := exec.Command(opts.Setup[0], opts.Setup[1:]...)
+		setup.Dir = worktreeDir
+		if out, err := setup.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("afk: worktree setup command failed: %s: %w", string(out), err)
+		}
 	}
 
 	return &Worktree{
